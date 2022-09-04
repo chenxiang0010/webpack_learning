@@ -1,0 +1,116 @@
+Import-Module posh-git
+$env:POSH_GIT_ENABLED = $true
+$env:CLASH_FOR_WINDOWS= "C:\Users\chenxiang\AppData\Local\Programs\Clash for Windows\Clash for Windows.exe"
+
+# oh-my-posh init pwsh | Invoke-Expression
+# & ([ScriptBlock]::Create((oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH\jandedobbeleer.omp.json" --print) -join "`n"))
+
+oh-my-posh --init --shell pwsh --config "$env:POSH_THEMES_PATH\jandedobbeleer.omp.json" | Invoke-Expression
+
+Import-Module -Name Terminal-Icons
+
+
+Import-Module -Name PSReadLine
+
+# 设置预测文本来源为历史记录
+Set-PSReadLineOption -PredictionSource History
+# 每次回溯输入历史，光标定位于输入内容末尾
+Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+# 设置 Tab 为菜单补全和 Intellisense
+Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
+# 设置向上键为后向搜索历史记录
+Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+# 设置向下键为前向搜索历史纪录
+Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+
+#-------------------------------    Functions BEGIN   -------------------------------
+# Python 直接执行
+$env:PATHEXT += ";.py"
+
+# 获取当前系统时间
+$CurrentYear = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+# 更新包
+function Update-Packages {
+	# update pnpm
+	Write-Host "Step 1: 更新 pnpm" $CurrentYear -ForegroundColor Magenta -BackgroundColor Cyan
+	pnpm update -g
+
+	# update Scoop
+	Write-Host "Step 2: 更新 Scoop" $CurrentYear -ForegroundColor Magenta -BackgroundColor Cyan
+	Scoop update
+}
+
+# 重启系统
+function Restart-System {
+  Write-Host "重启系统" $CurrentYear -ForegroundColor Magenta -BackgroundColor Cyan
+  $Restart = Read-Host "是否重启系统？(Y/N)"
+  if ($Restart -eq "Y") {
+    Shutdown -r -t 0
+  }
+}
+
+# 设置代理
+function Set-Proxy {
+    # 加载时打开Clash for Windows
+    & 'C:\Users\chenxiang\AppData\Local\Programs\Clash for Windows\Clash for Windows.exe'
+
+    # 设置代理
+    $env:HTTP_PROXY="http://127.0.0.1:7890"
+    $env:HTTPS_PROXY="https://127.0.0.1:7890"
+  }
+
+#-------------------------------    Functions END     -------------------------------
+
+
+
+
+
+#-------------------------------   Set Alias BEGIN    -------------------------------
+# 1. 更新包 update
+Set-Alias -Name update -Value Update-Packages
+
+# 2. 重启系统 os-restart
+Set-Alias -Name os-restart -Value Restart-System
+
+# 3. 设置代理 proxy
+Set-Alias -Name proxy -Value Set-Proxy
+#-------------------------------    Set Alias END     -------------------------------
+
+
+
+
+
+#-------------------------------   Set Network BEGIN    -------------------------------
+# 1. 获取所有 Network Interface
+function Get-AllNic {
+	Get-NetAdapter | Sort-Object -Property MacAddress
+}
+Set-Alias -Name getnic -Value Get-AllNic
+
+# 2. 获取 IPv4 关键路由
+function Get-IPv4Routes {
+	Get-NetRoute -AddressFamily IPv4 | Where-Object -FilterScript {$_.NextHop -ne '0.0.0.0'}
+}
+Set-Alias -Name getip -Value Get-IPv4Routes
+
+# 3. 获取 IPv6 关键路由
+function Get-IPv6Routes {
+	Get-NetRoute -AddressFamily IPv6 | Where-Object -FilterScript {$_.NextHop -ne '::'}
+}
+Set-Alias -Name getip6 -Value Get-IPv6Routes
+
+# 4. 获取MAC地址
+function Get-MacAddress {
+  Get-NetAdapter | Select-Object -Property Name, MacAddress
+}
+Set-Alias -Name getmac -Value Get-MacAddress
+#-------------------------------    Set Network END     -------------------------------
+
+# 关闭窗口时关闭Clash for Windows
+# trap {
+#   & 'C:\Users\chenxiang\AppData\Local\Programs\Clash for Windows\Clash for Windows.exe' --quit
+# }
+Register-EngineEvent PowerShell.Exiting –Action { `${Get-Process -Name "Clash for Windows" | Stop-Process}` }
+
+
